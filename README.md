@@ -4,7 +4,7 @@ Easily create key bind managers with ease.
 Original made for roblox & now rewritten in C# for Unity.
 
 # Example
-```
+``` cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
