@@ -21,7 +21,9 @@ namespace Packages
         public bool Inverted;
         public Axis ValueAxis = Axis.X;
         private bool HasBeenCalledValue = false;
+        private bool ReleasedHasBeenCalledValue = true;
         private Action KeyPress;
+        private Action KeyReleased;
 
         public KeyBind(KeyCode KeyCode)
         {
@@ -38,29 +40,31 @@ namespace Packages
             this.Inverted = Inverted;
             this.ValueAxis = ValueAxis;
         }
-        public void Connect(Action KeyPress)
+        public void PressConnect(Action KeyPress) { this.KeyPress = KeyPress; }
+        public void ReleasedConnect(Action KeyReleased) { this.KeyReleased = KeyReleased; }
+        public bool HasBeenCalled() { return HasBeenCalledValue; }
+        public void Uncall() { HasBeenCalledValue = false; }
+        public void CallReleased()
         {
-            this.KeyPress = KeyPress;
+            if (!ReleasedHasBeenCalledValue && this.KeyReleased != null)
+            {
+                ReleasedHasBeenCalledValue = true;
+                KeyReleased.Invoke();
+            }
         }
-        public bool HasBeenCalled()
-        {
-            return HasBeenCalledValue;
-        }
-        public void Call()
+        public void CallPressed()
         {
             if (!HasBeenCalledValue)
             {
                 HasBeenCalledValue = true;
+                ReleasedHasBeenCalledValue = false;
                 if (KeyPress != null)
                 {
                     KeyPress.Invoke();
                 }
             }
         }
-        public void Uncall()
-        {
-            HasBeenCalledValue = false;
-        }
+        
     }
 
     public class ValueClass
@@ -104,27 +108,44 @@ namespace Packages
     public class Flow
     {
         private Action<KeyCode> KeyPressDown;
+        private Action<KeyCode> KeyPressUp;
         private List<KeyBind> Keybinds = new List<KeyBind>();
         private ValueHolderClass ValueHolder = new ValueHolderClass();
 
+        public Flow(List<KeyBind> Keybinds)
+        {
+            this.Keybinds = Keybinds;
+        }
         public Flow(List<KeyBind> Keybinds, Action<KeyCode> KeyPressDown)
         {
             this.Keybinds = Keybinds;
             this.KeyPressDown = KeyPressDown;
         }
+        public Flow(List<KeyBind> Keybinds, Action<KeyCode> KeyPressDown, Action<KeyCode> KeyReleasedDown)
+        {
+            this.Keybinds = Keybinds;
+            this.KeyPressDown = KeyPressDown;
+            this.KeyPressUp = KeyReleasedDown;
+        }
 
         public void CheckKeybind(KeyBind Keybind)
         {
             bool IsDown = Input.GetKey(Keybind.KeyCode);
+            //bool Released = Input.GetKeyUp(Keybind.KeyCode);
 
+            //if (Released)
+            //{
+                //    KeyPressUp.Invoke(Keybind.KeyCode);
+            //    Keybind.CallReleased();
+            //}
             if (IsDown)
             {
-                if (KeyPressDown != null)
-                {
-                    KeyPressDown.Invoke(Keybind.KeyCode);
-                }
+                //if (KeyPressDown != null)
+                //{
+                //    KeyPressDown.Invoke(Keybind.KeyCode);
+                //}
                 
-                Keybind.Call();
+                Keybind.CallPressed();
 
                 int KeybindValue = 1;
                 if (Keybind.Inverted)
@@ -139,6 +160,7 @@ namespace Packages
                     ValueHolder.UpdateValue(0, Keybind.ValueAxis);
                 }
                 Keybind.Uncall();
+                Keybind.CallReleased();
             }
         }
 
@@ -163,7 +185,6 @@ namespace Packages
         public Vector3 GetVector3Value()
         {
             ValueClass Value = ValueHolder.GetValue();
-            Debug.Log("Getting Value: " + Value.Value1);
             return new Vector3(Value.Value1, Value.Value2, Value.Value3);
         }
     }
